@@ -180,7 +180,6 @@ jobs:
           version-type: ${{ needs.info.outputs.version_type }}
           loaders: ${{ needs.info.outputs.loaders }}
           game-versions: ${{ needs.info.outputs.game_versions }}
-          game-version-filter: none
           environment: client | server
           java: ${{ needs.info.outputs.java_version }}
 
