@@ -1,0 +1,17 @@
+[versions]
+shadow = "9.6.1"
+lombok = "1.18.46"
+annotations = "26.0.1"
+spotless = "8.10.2"
+palantir-java-format = "2.97.0"
+legacyforge = "2.0.119"
+
+[libraries]
+lombok = { module = "org.projectlombok:lombok", version.ref = "lombok" }
+annotations = { module = "org.jetbrains:annotations", version.ref = "annotations" }
+
+
+[plugins]
+legacyforge = { id = "net.neoforged.moddev.legacyforge", version.ref = "legacyforge" }
+shadow = { id = "com.gradleup.shadow", version.ref = "shadow" }
+spotless = { id = "com.diffplug.spotless", version.ref = "spotless" }

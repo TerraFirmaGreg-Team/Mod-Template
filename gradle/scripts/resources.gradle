@@ -1,0 +1,59 @@
+processResources {
+    duplicatesStrategy = DuplicatesStrategy.INCLUDE
+
+    Map<String, Object> replaceProperties = [
+            'mod_id'              : "${mod_id}",
+            'mod_name'            : "${mod_name}",
+            'mod_version'         : "${mod_version}",
+            'mod_description'     : "${mod_description}",
+            'mod_authors'         : "${mod_authors}",
+            'mod_credits'         : "${mod_credits}",
+            'mod_url'             : "${mod_url}",
+            'mod_logo_path'       : "${mod_logo_path}",
+            'minecraft_version'   : "${minecraft_version}",
+            'loader'              : "${loader}",
+            'loader_version'      : "${loader_version}",
+            'loader_version_range': "${loader_version_range}"
+    ]
+
+    List<String> filterList = [
+            'META-INF/mods.toml',
+            'pack.mcmeta'
+    ]
+
+    inputs.properties(replaceProperties)
+
+    filesMatching(filterList) {
+        expand(replaceProperties + [project: project])
+    }
+}
+
+
+tasks.register("prepareServerDev") {
+
+    File serverDir = file("run/server")
+    File eulaFile = file("${serverDir}/eula.txt")
+    File propsFile = file("${serverDir}/server.properties")
+
+    outputs.files(eulaFile, propsFile)
+
+    doLast {
+        serverDir.mkdirs()
+
+        eulaFile.text = 'eula=true\n'
+
+        Properties properties = new Properties()
+
+        if (propsFile.exists()) {
+            propsFile.withReader('UTF-8') {
+                properties.load(it)
+            }
+        }
+
+        properties.setProperty('online-mode', 'false')
+
+        propsFile.withWriter('UTF-8') {
+            properties.store(it, null)
+        }
+    }
+}
