@@ -171,8 +171,6 @@ jobs:
           github-name: ${{ needs.info.outputs.version }}
           github-tag: ${{ needs.info.outputs.version }}
           github-generate-changelog: true
-          github-draft: false
-          github-prerelease: ${{ needs.info.outputs.version_type != 'release' }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
           files: ${{ needs.info.outputs.full_name }}.jar
