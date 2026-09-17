@@ -160,7 +160,7 @@ jobs:
         uses: actions/download-artifact@v8
 
       - name: Publish
-        uses: Xikaro/game-publish@master
+        uses: Xikaro/game-publish@main
         with:
           modrinth-id: ${{ vars.MODRINTH_ID }}
           modrinth-token: ${{ secrets.MODRINTH_TOKEN }}
