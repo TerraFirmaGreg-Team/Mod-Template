@@ -1,35 +1,29 @@
 processResources {
-    duplicatesStrategy = DuplicatesStrategy.INCLUDE
-
-    Map<String, Object> replaceProperties = [
-            'mod_id'              : "${mod_id}",
-            'mod_name'            : "${mod_name}",
-            'mod_version'         : "${mod_version}",
-            'mod_description'     : "${mod_description}",
-            'mod_authors'         : "${mod_authors}",
-            'mod_credits'         : "${mod_credits}",
-            'mod_url'             : "${mod_url}",
-            'mod_logo_path'       : "${mod_logo_path}",
-            'minecraft_version'   : "${minecraft_version}",
-            'loader'              : "${loader}",
-            'loader_version'      : "${loader_version}",
-            'loader_version_range': "${loader_version_range}"
+    def keys = [
+            'mod_id',
+            'mod_name',
+            'mod_version',
+            'mod_description',
+            'mod_authors',
+            'mod_credits',
+            'mod_url',
+            'mod_logo_path',
+            'minecraft_version',
+            'loader',
+            'loader_version',
+            'loader_version_range',
     ]
-
-    List<String> filterList = [
-            'META-INF/mods.toml',
-            'pack.mcmeta'
-    ]
-
-    inputs.properties(replaceProperties)
-
-    filesMatching(filterList) {
-        expand(replaceProperties + [project: project])
+    def props = keys.collectEntries { key ->
+        def value = findProperty(key)
+        value == null ? [:] : [(key): value.toString()]
+    }
+    inputs.properties props
+    filesMatching(['META-INF/mods.toml', 'mcmod.info', 'pack.mcmeta']) {
+        expand props
     }
 }
 
-
-tasks.register("prepareServerDev") {
+tasks.register('prepareServerDev') {
 
     File serverDir = file("run/server")
     File eulaFile = file("${serverDir}/eula.txt")
@@ -56,4 +50,8 @@ tasks.register("prepareServerDev") {
             properties.store(it, null)
         }
     }
+}
+
+tasks.matching { it.name == 'runServer' }.configureEach {
+    dependsOn 'prepareServerDev'
 }

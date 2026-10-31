@@ -1,30 +1,20 @@
-tasks.withType(JavaCompile).configureEach {
-    options.encoding = 'UTF-8' // Use the UTF-8 charset for Java compilation
-    dependsOn tasks.named('spotlessApply')
-}
+def libs = extensions.getByName('libs')
+
+apply plugin: 'com.diffplug.spotless'
 
 spotless {
-
+    encoding 'UTF-8'
     java {
         target 'src/*/java/**/*.java'
-        encoding 'UTF-8'
-
-
         palantirJavaFormat(libs.versions.palantir.java.format.get()).formatJavadoc(true)
         removeUnusedImports()
         trimTrailingWhitespace()
         endWithNewline()
     }
-
     json {
-        target 'src/main/resources/**/*.json'
+        target 'src/main/resources/**/*.json', 'src/main/resources/**/*.info'
         simple()
         leadingTabsToSpaces(2)
         endWithNewline()
-
     }
-}
-
-tasks.named("build") {
-    dependsOn("spotlessApply")
 }

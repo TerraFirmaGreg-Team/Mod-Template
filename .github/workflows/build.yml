@@ -1,19 +1,22 @@
-name: "Project Build"
-run-name: "[📦]: Project Build #${{ github.run_number }}"
-
+name: "Build"
+run-name: "[📦]: Build #${{ github.run_number }}"
 on:
   push:
     branches:
-      - dev
       - main
+      - dev
     paths:
       - '.github/workflows/**'
       - 'gradle/**'
-      - 'src/**'
+      - 'modules/**'
       - '*.gradle'
       - 'gradle.properties'
+      - 'settings.gradle'
       - 'CHANGELOG.md'
   workflow_dispatch:
+
+permissions:
+  contents: write
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -25,130 +28,56 @@ jobs:
     runs-on: ubuntu-latest
     if: ${{ !github.event.repository.fork }}
     outputs:
-      name: ${{ steps.check.outputs.name }}
-      version: ${{ steps.check.outputs.version }}
-      version_type: ${{ steps.check.outputs.version_type }}
-      full_name: ${{ steps.check.outputs.name }}-${{ steps.check.outputs.version }}
-      loaders: ${{ steps.check.outputs.loaders }}
-      game_versions: ${{ steps.check.outputs.game_versions }}
-      java_version: ${{ steps.check.outputs.java_version }}
-      make_release: ${{ steps.check.outputs.make_release }}
-      exists: ${{ steps.check.outputs.exists }}
-
+      name: ${{ steps.info.outputs.name }}
+      version: ${{ steps.info.outputs.version }}
+      version_type: ${{ steps.info.outputs.version_type }}
+      full_name: ${{ steps.info.outputs.full_name }}
+      java_version: ${{ steps.info.outputs.java_version }}
+      make_release: ${{ steps.info.outputs.make_release }}
+      modern_suffix: ${{ steps.modern.outputs.mod_name_suffix }}
+      modern_loader: ${{ steps.modern.outputs.loader }}
+      modern_mc: ${{ steps.modern.outputs.minecraft_version }}
+      modern_java: ${{ steps.modern.outputs.java_version }}
+      vintage_suffix: ${{ steps.vintage.outputs.mod_name_suffix }}
+      vintage_loader: ${{ steps.vintage.outputs.loader }}
+      vintage_mc: ${{ steps.vintage.outputs.minecraft_version }}
+      vintage_java: ${{ steps.vintage.outputs.java_version }}
     steps:
-      - name: Checkout
-        uses: actions/checkout@v7
+      - name: Collect info
+        id: info
+        uses: TerraFirmaGreg-Team/Actions/mod/info@main
         with:
-          fetch-depth: 0
-
-      - name: Check required files and folders
-        uses: andstor/file-existence-action@v3.1.0
-        with:
-          fail: true
-          ignore_case: true
-          files: "gradle.properties, build.gradle, README.md, src"
-
-      - name: Get Project Info
-        id: project_info
+          required_files: "gradle.properties, build.gradle, README.md, modules"
+      - name: Modern properties
+        id: modern
         uses: madhead/read-java-properties@latest
         with:
-          file: gradle.properties
+          file: modules/modern/gradle.properties
           all: true
-
-      - name: Check if tag exists
-        uses: mukunku/tag-exists-action@v1.7.0
-        id: tag_check
+      - name: Vintage properties
+        id: vintage
+        uses: madhead/read-java-properties@latest
         with:
-          tag: ${{ steps.project_info.outputs.mod_version }}
-
-      - name: Check
-        id: check
-        shell: bash
-        run: |
-          TAG_EXISTS="${{ steps.tag_check.outputs.exists }}"
-          PROJECT_NAME="${{ steps.project_info.outputs.mod_name }}-${{ steps.project_info.outputs.mod_name_suffix }}"
-          GAME_VERSIONS="${{ steps.project_info.outputs.minecraft_version }}"
-          JAVA_VERSION="${{ steps.project_info.outputs.java_version }}"
-          LOADERS="${{ steps.project_info.outputs.loader }}"
-          LOADERS_VERSION="${{ steps.project_info.outputs.loader_version }}"
-
-          IS_RELEASE_CANDIDATE="false"
-          if [[ "$TAG_EXISTS" == "false" && -n "${{ steps.project_info.outputs.mod_version }}" ]]; then
-            IS_RELEASE_CANDIDATE="true"
-          fi
-
-          if [[ "$IS_RELEASE_CANDIDATE" == "true" ]]; then
-            PROJECT_VERSION="${{ steps.project_info.outputs.mod_version }}"
-            PROJECT_VERSION_TYPE="${{ steps.project_info.outputs.mod_version_type }}"
-          else
-            PROJECT_VERSION="${{ steps.project_info.outputs.mod_version }}-build-${{ github.run_number }}"
-            PROJECT_VERSION_TYPE="Unreleased"
-          fi
-
-          echo "game_version=$GAME_VERSIONS" >> $GITHUB_OUTPUT
-          echo "java_version=$JAVA_VERSION" >> $GITHUB_OUTPUT
-          echo "loaders=$LOADERS" >> $GITHUB_OUTPUT
-          echo "loaders_version=$LOADERS_VERSION" >> $GITHUB_OUTPUT
-          echo "name=$PROJECT_NAME" >> $GITHUB_OUTPUT
-          echo "version=$PROJECT_VERSION" >> $GITHUB_OUTPUT
-          echo "version_type=$PROJECT_VERSION_TYPE" >> $GITHUB_OUTPUT
-          echo "exists=$TAG_EXISTS" >> $GITHUB_OUTPUT
-          echo "make_release=$IS_RELEASE_CANDIDATE" >> $GITHUB_OUTPUT
-
-      - name: Generate Build Summary
-        uses: WcAServices/markdown-template-action@v1.1.1
-        with:
-          template: |
-            ## 📊 Build Information
-
-            | Parameter | Value |
-            |-----------|-------|
-            | 📃 **Name** | `${{ steps.check.outputs.name }}` |
-            | 📃 **Version** | `${{ steps.check.outputs.version }}` |
-            | 📃 **Release Type** | `${{ steps.check.outputs.version_type }}` |
-            | 📃 **Game Versions** | `${{ steps.check.outputs.game_version }}` |
-            | 📃 **Loaders** | `${{ steps.check.outputs.loaders }}` |
-            | 📃 **Loaders Version** | `${{ steps.check.outputs.loaders_version }}` |
-
-            ### Build Decision
-            | Parameter | Value |
-            |-----------|-------|
-            | 📃 **Tag Exists** | `${{ steps.check.outputs.exists }}` |
-            | 📃 **Make Release** | `${{ steps.check.outputs.make_release }}` |
+          file: modules/vintage/gradle.properties
+          all: true
 
   build:
     name: "[📦] Project Build"
     needs: [info]
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v7
-
-      - name: Replace version
-        shell: bash
-        run: |
-          VERSION="${{ needs.info.outputs.version }}"
-          sed -i "s/^mod_version[[:space:]]*=.*/mod_version = ${VERSION}/g" gradle.properties
-
-      - name: Setup Java
-        uses: actions/setup-java@v6.0.1
+      - name: Build
+        uses: TerraFirmaGreg-Team/Actions/mod/build@main
         with:
-          distribution: 'temurin'
-          java-version: ${{ needs.info.outputs.java_version }}
-          cache: 'gradle'
-
-      - name: Prepare artifact
-        run: |
-          chmod +x gradlew
-          ./gradlew build
-          ls -la build/libs/
-
-      - name: Upload artifact
-        uses: actions/upload-artifact@v7
-        with:
-          name: ${{ needs.info.outputs.full_name }}
-          path: build/libs/${{ needs.info.outputs.full_name }}.jar
-          if-no-files-found: error
+          version: ${{ needs.info.outputs.version }}
+          replace_version: true
+          java_version: |
+            ${{ needs.info.outputs.java_version }}
+            ${{ needs.info.outputs.modern_java }}
+            ${{ needs.info.outputs.vintage_java }}
+          gradle_args: build --no-daemon
+          artifact_name: ${{ needs.info.outputs.full_name }}
+          artifact_path: build/libs/*.jar
 
   release:
     name: "[🚀] Project Release"
@@ -156,35 +85,38 @@ jobs:
     runs-on: ubuntu-latest
     if: ${{ needs.info.outputs.make_release == 'true' }}
     steps:
-      - name: Download artifact
-        uses: actions/download-artifact@v8
-
-      - name: Publish
-        uses: Xikaro/game-publish@main
+      - name: Publish modern
+        uses: TerraFirmaGreg-Team/Actions/mod/release@main
         with:
-          modrinth-id: ${{ vars.MODRINTH_ID }}
-          modrinth-token: ${{ secrets.MODRINTH_TOKEN }}
-
-          curseforge-id: ${{ vars.CURSEFORGE_ID }}
-          curseforge-token: ${{ secrets.CURSEFORGE_TOKEN }}
-
-          github-name: ${{ needs.info.outputs.version }}
-          github-tag: ${{ needs.info.outputs.version }}
-          github-generate-changelog: true
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-
-          files: ${{ needs.info.outputs.full_name }}.jar
-
-          name: ${{ needs.info.outputs.full_name }}
+          full_name: ${{ needs.info.outputs.name }}-${{ needs.info.outputs.modern_suffix }}-${{ needs.info.outputs.version }}
           version: ${{ needs.info.outputs.version }}
-          version-type: ${{ needs.info.outputs.version_type }}
-          loaders: ${{ needs.info.outputs.loaders }}
-          game-versions: ${{ needs.info.outputs.game_versions }}
-          environment: client | server
-          java: ${{ needs.info.outputs.java_version }}
+          version_type: ${{ needs.info.outputs.version_type }}
+          files: ${{ needs.info.outputs.name }}-${{ needs.info.outputs.modern_suffix }}-*.jar
+          loaders: ${{ needs.info.outputs.modern_loader }}
+          game_versions: ${{ needs.info.outputs.modern_mc }}
+          java: ${{ needs.info.outputs.modern_java }}
+          environment: client
+          github_name: ${{ needs.info.outputs.version }}
+          github_prerelease: ${{ needs.info.outputs.version_type != 'release' }}
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          modrinth_id: ${{ vars.MODRINTH_ID }}
+          modrinth_token: ${{ secrets.MODRINTH_TOKEN }}
+          curseforge_id: ${{ vars.CURSEFORGE_ID }}
+          curseforge_token: ${{ secrets.CURSEFORGE_TOKEN }}
 
-          rollback: true
-
-          retry-attempts: 2
-          retry-delay: 10000
-          fail-mode: fail
+      - name: Publish vintage
+        uses: TerraFirmaGreg-Team/Actions/mod/release@main
+        with:
+          full_name: ${{ needs.info.outputs.name }}-${{ needs.info.outputs.vintage_suffix }}-${{ needs.info.outputs.version }}
+          version: ${{ needs.info.outputs.version }}
+          version_type: ${{ needs.info.outputs.version_type }}
+          files: ${{ needs.info.outputs.name }}-${{ needs.info.outputs.vintage_suffix }}-*.jar
+          loaders: ${{ needs.info.outputs.vintage_loader }}
+          game_versions: ${{ needs.info.outputs.vintage_mc }}
+          java: ${{ needs.info.outputs.vintage_java }}
+          environment: client
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          modrinth_id: ${{ vars.MODRINTH_ID }}
+          modrinth_token: ${{ secrets.MODRINTH_TOKEN }}
+          curseforge_id: ${{ vars.CURSEFORGE_ID }}
+          curseforge_token: ${{ secrets.CURSEFORGE_TOKEN }}
